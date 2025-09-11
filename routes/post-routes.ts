@@ -6,7 +6,7 @@ const router = Router();
 const postController = new PostController();
 
 // All routes require authentication
-router.use(authMiddleware(['user', 'admin']));
+router.use(authMiddleware(['user']));
 
 // Post routes
 router.post('/', postController.createPost);

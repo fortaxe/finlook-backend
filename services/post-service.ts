@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql, count } from 'drizzle-orm';
+import { eq, desc,  and, sql, count } from 'drizzle-orm';
 import { db } from '../config/database.js';
 import { posts, users, comments, likes, bookmarks } from '../db/schema.js';
 import { CustomError } from '../middleware/error-handler.js';
@@ -28,8 +28,13 @@ export class PostService {
         })
         .returning();
 
+      if (!Array.isArray(newPost) || newPost.length === 0 || !newPost[0]?.id) {
+        throw new CustomError('Failed to create post', 500);
+      }
       return await PostService.getPostById(newPost[0].id);
+     
     } catch (error) {
+      console.log('error', error);
       throw new CustomError('Failed to create post', 500);
     }
   }
@@ -50,7 +55,11 @@ export class PostService {
         throw new CustomError('Original post not found', 404);
       }
 
-      if (originalPost[0].isRetweet) {
+      if (!Array.isArray(originalPost) || originalPost.length === 0 || !originalPost[0]?.id) {
+        throw new CustomError('Original post not found', 404);
+      }
+
+      if  (originalPost[0].isRetweet) {
         throw new CustomError('Cannot retweet a retweet', 400);
       }
 
@@ -76,6 +85,7 @@ export class PostService {
         .values({
           userId,
           content: retweetData.content,
+          images: retweetData.images || [],
           isRetweet: true,
           originalPostId: retweetData.originalPostId,
         })
@@ -90,8 +100,13 @@ export class PostService {
         })
         .where(eq(posts.id, retweetData.originalPostId));
 
+        if (!Array.isArray(newRetweet) || newRetweet.length === 0 || !newRetweet[0]?.id) {
+          throw new CustomError('Failed to create retweet', 500);
+        }
+
       return await PostService.getPostById(newRetweet[0].id);
     } catch (error) {
+      console.log('error', error);
       if (error instanceof CustomError) {
         throw error;
       }
@@ -102,7 +117,7 @@ export class PostService {
   /**
    * Get posts with pagination
    */
-  static async getPosts(pagination: PaginationQuery) {
+  static async getPosts(pagination: PaginationQuery, userId?: string) {
     try {
       const offset = (pagination.page - 1) * pagination.limit;
 
@@ -141,21 +156,76 @@ export class PostService {
         .select({ count: count() })
         .from(posts);
 
-      const total = totalResult[0].count;
+      const total = totalResult[0]?.count || 0;
 
-      // Get comments for each post
-      const postsWithComments = await Promise.all(
+      // Get comments for each post and check user interactions
+      const postsWithDetails = await Promise.all(
         postsResult.map(async (post) => {
-          const postComments = await PostService.getPostComments(post.id, { page: 1, limit: 5 });
+          const postComments = await PostService.getPostComments(post.id, { page: 1, limit: 5 }, userId);
+          
+          let isLiked = false;
+          let isBookmarked = false;
+          
+          // Check if user has liked this post
+          if (userId) {
+            const userLike = await db
+              .select()
+              .from(likes)
+              .where(and(eq(likes.postId, post.id), eq(likes.userId, userId)))
+              .limit(1);
+            isLiked = userLike.length > 0;
+            
+            // Check if user has bookmarked this post
+            const userBookmark = await db
+              .select()
+              .from(bookmarks)
+              .where(and(eq(bookmarks.postId, post.id), eq(bookmarks.userId, userId)))
+              .limit(1);
+            isBookmarked = userBookmark.length > 0;
+          }
+          
+          // Check if user has retweeted this post
+          let isRetweeted = false;
+          if (userId) {
+            const userRetweet = await db
+              .select()
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, userId),
+                  eq(posts.originalPostId, post.id),
+                  eq(posts.isRetweet, true)
+                )
+              )
+              .limit(1);
+            isRetweeted = userRetweet.length > 0;
+          }
+          
+          // Get original post data if this is a retweet
+          let originalPost = null;
+          if (post.isRetweet && post.originalPostId) {
+            try {
+              const originalPostResult = await PostService.getPostById(post.originalPostId);
+              originalPost = originalPostResult;
+            } catch (error) {
+              console.log(`Original post ${post.originalPostId} not found for retweet ${post.id}`);
+              // Continue without original post data
+            }
+          }
+          
           return {
             ...post,
-            comments: postComments.data,
+            comments: postComments.comments,
+            isLiked,
+            isBookmarked,
+            isRetweeted,
+            originalPost,
           };
         })
       );
 
       return {
-        data: postsWithComments,
+        data: postsWithDetails,
         pagination: {
           page: pagination.page,
           limit: pagination.limit,
@@ -164,6 +234,7 @@ export class PostService {
         },
       };
     } catch (error) {
+      console.log('Error in getPosts:', error);
       throw new CustomError('Failed to get posts', 500);
     }
   }
@@ -211,9 +282,73 @@ export class PostService {
       // Get comments
       const postComments = await PostService.getPostComments(postId, { page: 1, limit: 10 });
 
+      // Get original post data if this is a retweet (without deep recursion)
+      let originalPost = null;
+
+      if (!post) {
+        throw new CustomError('Post not found', 404);
+      }
+
+      if (post.isRetweet && post.originalPostId) {
+        try {
+          const originalPostResult = await db
+            .select({
+              id: posts.id,
+              content: posts.content,
+              images: posts.images,
+              likes: posts.likes,
+              shares: posts.shares,
+              bookmarks: posts.bookmarks,
+              isRetweet: posts.isRetweet,
+              originalPostId: posts.originalPostId,
+              createdAt: posts.createdAt,
+              updatedAt: posts.updatedAt,
+              userId: posts.userId,
+            })
+            .from(posts)
+            .where(eq(posts.id, post.originalPostId))
+            .limit(1);
+            
+          if (originalPostResult.length > 0) {
+            const originalPostData = originalPostResult[0];
+            
+            if (originalPostData) {
+              // Get user data for original post
+              const originalUserResult = await db
+                .select({
+                  id: users.id,
+                  name: users.name,
+                  username: users.username,
+                  email: users.email,
+                  mobileNumber: users.mobileNumber,
+                  isInfluencer: users.isInfluencer,
+                  influencerUrl: users.influencerUrl,
+                  avatar: users.avatar,
+                  verified: users.verified,
+                })
+                .from(users)
+                .where(eq(users.id, originalPostData.userId))
+                .limit(1);
+                
+              if (originalUserResult.length > 0) {
+                originalPost = {
+                  ...originalPostData,
+                  user: originalUserResult[0],
+                  comments: [], // Don't fetch comments for original post to avoid deep nesting
+                };
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`Original post ${post.originalPostId} not found for retweet ${post.id}`);
+          // Continue without original post data
+        }
+      }
+
       return {
         ...post,
-        comments: postComments.data,
+        comments: postComments.comments,
+        originalPost,
       };
     } catch (error) {
       if (error instanceof CustomError) {
@@ -239,7 +374,8 @@ export class PostService {
         throw new CustomError('Post not found', 404);
       }
 
-      if (existingPost[0].userId !== userId) {
+      const post = existingPost[0]!;
+      if (post.userId !== userId) {
         throw new CustomError('You can only update your own posts', 403);
       }
 
@@ -277,13 +413,14 @@ export class PostService {
         throw new CustomError('Post not found', 404);
       }
 
-      if (existingPost[0].userId !== userId) {
+      const post = existingPost[0]!;
+      if (post.userId !== userId) {
         throw new CustomError('You can only delete your own posts', 403);
       }
 
       // Delete images from R2 if they exist
-      if (existingPost[0].images && existingPost[0].images.length > 0) {
-        const imageKeys = UploadService.extractKeysFromUrls(existingPost[0].images as string[]);
+      if (post.images && post.images.length > 0) {
+        const imageKeys = UploadService.extractKeysFromUrls(post.images as string[]);
         await UploadService.deleteFiles(imageKeys);
       }
 
@@ -302,7 +439,7 @@ export class PostService {
   /**
    * Get post comments
    */
-  static async getPostComments(postId: string, pagination: PaginationQuery) {
+  static async getPostComments(postId: string, pagination: PaginationQuery, userId?: string) {
     try {
       const offset = (pagination.page - 1) * pagination.limit;
 
@@ -339,10 +476,33 @@ export class PostService {
         .from(comments)
         .where(eq(comments.postId, postId));
 
-      const total = totalResult[0].count;
+      const total = totalResult[0]?.count || 0;
+
+      // Add user interaction states to comments
+      const commentsWithUserStates = await Promise.all(
+        commentsResult.map(async (comment) => {
+          let isLiked = false;
+          
+          // Check if user has liked this comment
+          if (userId) {
+            const userLike = await db
+              .select()
+              .from(likes)
+              .where(and(eq(likes.commentId, comment.id), eq(likes.userId, userId)))
+              .limit(1);
+            isLiked = userLike.length > 0;
+          }
+          
+          return {
+            ...comment,
+            likesCount: comment.likes || 0,
+            isLiked,
+          };
+        })
+      );
 
       return {
-        data: commentsResult,
+        comments: commentsWithUserStates,
         pagination: {
           page: pagination.page,
           limit: pagination.limit,
@@ -381,7 +541,7 @@ export class PostService {
         })
         .returning();
 
-      return await PostService.getCommentById(newComment[0].id);
+      return await PostService.getCommentById(newComment[0]!.id);
     } catch (error) {
       if (error instanceof CustomError) {
         throw error;
@@ -450,7 +610,8 @@ export class PostService {
         throw new CustomError('Comment not found', 404);
       }
 
-      if (existingComment[0].userId !== userId) {
+      const comment = existingComment[0]!;
+      if (comment.userId !== userId) {
         throw new CustomError('You can only update your own comments', 403);
       }
 
@@ -488,13 +649,14 @@ export class PostService {
         throw new CustomError('Comment not found', 404);
       }
 
-      if (existingComment[0].userId !== userId) {
+      const comment = existingComment[0]!;
+      if (comment.userId !== userId) {
         throw new CustomError('You can only delete your own comments', 403);
       }
 
       // Delete images from R2 if they exist
-      if (existingComment[0].images && existingComment[0].images.length > 0) {
-        const imageKeys = UploadService.extractKeysFromUrls(existingComment[0].images as string[]);
+      if (comment.images && comment.images.length > 0) {
+        const imageKeys = UploadService.extractKeysFromUrls(comment.images as string[]);
         await UploadService.deleteFiles(imageKeys);
       }
 
@@ -547,7 +709,16 @@ export class PostService {
           })
           .where(eq(posts.id, postId));
 
-        return { liked: false };
+        const updatedPost = await db
+          .select({ likes: posts.likes })
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .limit(1);
+
+        return { 
+          liked: false, 
+          likesCount: updatedPost[0]?.likes || 0 
+        };
       } else {
         // Like
         await db.insert(likes).values({
@@ -563,7 +734,16 @@ export class PostService {
           })
           .where(eq(posts.id, postId));
 
-        return { liked: true };
+        const updatedPost = await db
+          .select({ likes: posts.likes })
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .limit(1);
+
+        return { 
+          liked: true, 
+          likesCount: updatedPost[0]?.likes || 0 
+        };
       }
     } catch (error) {
       if (error instanceof CustomError) {
@@ -610,7 +790,16 @@ export class PostService {
           })
           .where(eq(comments.id, commentId));
 
-        return { liked: false };
+        const updatedComment = await db
+          .select({ likes: comments.likes })
+          .from(comments)
+          .where(eq(comments.id, commentId))
+          .limit(1);
+
+        return { 
+          liked: false, 
+          likesCount: updatedComment[0]?.likes || 0 
+        };
       } else {
         // Like
         await db.insert(likes).values({
@@ -626,7 +815,16 @@ export class PostService {
           })
           .where(eq(comments.id, commentId));
 
-        return { liked: true };
+        const updatedComment = await db
+          .select({ likes: comments.likes })
+          .from(comments)
+          .where(eq(comments.id, commentId))
+          .limit(1);
+
+        return { 
+          liked: true, 
+          likesCount: updatedComment[0]?.likes || 0 
+        };
       }
     } catch (error) {
       if (error instanceof CustomError) {
@@ -673,7 +871,16 @@ export class PostService {
           })
           .where(eq(posts.id, postId));
 
-        return { bookmarked: false };
+        const updatedPost = await db
+          .select({ bookmarks: posts.bookmarks })
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .limit(1);
+
+        return { 
+          bookmarked: false, 
+          bookmarksCount: updatedPost[0]?.bookmarks || 0 
+        };
       } else {
         // Add bookmark
         await db.insert(bookmarks).values({
@@ -689,7 +896,16 @@ export class PostService {
           })
           .where(eq(posts.id, postId));
 
-        return { bookmarked: true };
+        const updatedPost = await db
+          .select({ bookmarks: posts.bookmarks })
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .limit(1);
+
+        return { 
+          bookmarked: true, 
+          bookmarksCount: updatedPost[0]?.bookmarks || 0 
+        };
       }
     } catch (error) {
       if (error instanceof CustomError) {

@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Security middleware
 app.use(securityMiddleware);
 app.use(compressionMiddleware);
-app.use(corsMiddleware);
+// app.use(corsMiddleware);
 app.use(rateLimitMiddleware);
 
 // Health check endpoint

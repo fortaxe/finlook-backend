@@ -29,7 +29,7 @@ export class OtpService {
   /**
    * Send OTP to mobile number
    */
-  static async sendOtp(mobileNumber: string): Promise<{ success: boolean; message: string }> {
+  static async sendOtp(mobileNumber: string): Promise<{ success: boolean; message: string; otp: string }> {
     try {
       const otpKey = OtpService.getOtpKey(mobileNumber);
       const attemptKey = OtpService.getAttemptKey(mobileNumber);
@@ -59,6 +59,7 @@ export class OtpService {
       return {
         success: true,
         message: 'OTP sent successfully',
+        otp,
       };
     } catch (error) {
       if (error instanceof CustomError) {

@@ -7,6 +7,7 @@ export const users = pgTable('users', {
   name: varchar('name', { length: 255 }).notNull(),
   username: varchar('username', { length: 50 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
+  password: varchar('password', { length: 255 }),
   mobileNumber: varchar('mobile_number', { length: 10 }).notNull().unique(),
   role: varchar('role', { length: 20 }).notNull().default('user'), // 'user' | 'admin'
   isInfluencer: boolean('is_influencer').notNull().default(false),

@@ -25,6 +25,7 @@ export const updatePostSchema = z.object({
 export const createRetweetSchema = z.object({
   originalPostId: z.string().uuid('Please provide a valid post ID'),
   content: z.string().max(2000, 'Retweet content is too long').optional(),
+  images: z.array(z.string().url('Please provide valid image URLs')).max(4, 'Maximum 4 images allowed').optional(),
 });
 
 export const createCommentSchema = z.object({
@@ -50,8 +51,8 @@ export const updateCommentSchema = z.object({
 );
 
 export const paginationSchema = z.object({
-  page: z.number(),
-  limit: z.number(),
+  page: z.coerce.number().default(1),
+  limit: z.coerce.number().default(10),
 });
 
 export const postIdSchema = z.object({

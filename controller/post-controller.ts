@@ -17,6 +17,7 @@ export class PostController extends BaseController {
    * Create a new post
    */
   createPost = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    console.log('req.body', req.body);
     const userId = (req as any).user?.userId;
     const postData = this.validateBody(createPostSchema, req.body);
     
@@ -28,6 +29,7 @@ export class PostController extends BaseController {
    * Create a retweet
    */
   createRetweet = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    console.log('req.body', req.body);
     const userId = (req as any).user?.userId;
     const retweetData = this.validateBody(createRetweetSchema, req.body);
     
@@ -39,9 +41,12 @@ export class PostController extends BaseController {
    * Get posts with pagination
    */
   getPosts = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as any).user?.userId;
     const pagination = this.validateQuery(paginationSchema, req.query);
+  
+    const result = await PostService.getPosts(pagination, userId);
+
     
-    const result = await PostService.getPosts(pagination);
     this.sendPaginatedSuccess(res, result.data, result.pagination, 'Posts retrieved successfully');
   });
 
@@ -82,11 +87,14 @@ export class PostController extends BaseController {
    * Get post comments
    */
   getPostComments = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as any).user?.userId;
+    console.log('userId', userId);
     const { id } = this.validateParams(postIdSchema, req.params);
     const pagination = this.validateQuery(paginationSchema, req.query);
     
-    const result = await PostService.getPostComments(id, pagination);
-    this.sendPaginatedSuccess(res, result.data, result.pagination, 'Comments retrieved successfully');
+    const result = await PostService.getPostComments(id, pagination, userId);
+    console.log('result', result);
+    this.sendPaginatedSuccess(res, result.comments, result.pagination, 'Comments retrieved successfully');
   });
 
   /**

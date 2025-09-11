@@ -1,18 +1,18 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { eq } from 'drizzle-orm';
-import { db } from '../config/database.js';
-import { users } from '../db/schema.js';
-import { env } from '../config/env.js';
-import { CustomError } from '../middleware/error-handler.js';
-import { OtpService } from './otp-service.js';
-import type { 
-  SignUpRequest, 
-  SendOtpRequest, 
-  VerifyOtpRequest, 
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { eq } from "drizzle-orm";
+import { db } from "../config/database.js";
+import { users } from "../db/schema.js";
+import { env } from "../config/env.js";
+import { CustomError } from "../middleware/error-handler.js";
+import { OtpService } from "./otp-service.js";
+import type {
+  SignUpRequest,
+  SendOtpRequest,
+  VerifyOtpRequest,
   AdminSignInRequest,
-  CreateAdminRequest 
-} from '../validations/auth-validation.js';
+  CreateAdminRequest,
+} from "../validations/auth-validation.js";
 
 export class AuthService {
   /**
@@ -26,19 +26,22 @@ export class AuthService {
   /**
    * Compare password with hash
    */
-  private static async comparePassword(password: string, hash: string): Promise<boolean> {
+  private static async comparePassword(
+    password: string,
+    hash: string
+  ): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }
 
   /**
    * Generate JWT token
    */
-  private static generateToken(userId: string, email: string, role: string): string {
-    return jwt.sign(
-      { userId, email, role },
-      env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+  private static generateToken(
+    userId: string,
+    email: string,
+    role: string
+  ): string {
+    return jwt.sign({ userId, email, role }, env.JWT_SECRET);
   }
 
   /**
@@ -54,7 +57,7 @@ export class AuthService {
         .limit(1);
 
       if (existingUserByEmail.length > 0) {
-        throw new CustomError('User with this email already exists', 409);
+        throw new CustomError("User with this email already exists", 409);
       }
 
       // Check if username already exists
@@ -65,7 +68,7 @@ export class AuthService {
         .limit(1);
 
       if (existingUserByUsername.length > 0) {
-        throw new CustomError('Username is already taken', 409);
+        throw new CustomError("Username is already taken", 409);
       }
 
       // Check if mobile number already exists
@@ -76,7 +79,10 @@ export class AuthService {
         .limit(1);
 
       if (existingUserByMobile.length > 0) {
-        throw new CustomError('User with this mobile number already exists', 409);
+        throw new CustomError(
+          "User with this mobile number already exists",
+          409
+        );
       }
 
       // Create user (no password for regular users)
@@ -87,10 +93,10 @@ export class AuthService {
           username: userData.username,
           email: userData.email,
           mobileNumber: userData.mobileNumber,
-          password: null, // No password for regular users
+          password: null,
           isInfluencer: userData.isInfluencer || false,
           influencerUrl: userData.influencerUrl,
-          role: 'user',
+          role: "user",
         })
         .returning({
           id: users.id,
@@ -107,95 +113,32 @@ export class AuthService {
         });
 
       const user = newUser[0];
+
+      if (!user) {
+        throw new CustomError("Failed to create user account", 500);
+      }
+
       const token = AuthService.generateToken(user.id, user.email, user.role);
+
+      // Send OTP
+      const result = await OtpService.sendOtp(user.mobileNumber);
 
       return {
         user,
         token,
+        result,
       };
     } catch (error) {
+      console.log(error);
       if (error instanceof CustomError) {
         throw error;
       }
-      throw new CustomError('Failed to create user account', 500);
-    }
-  }
-
-  /**
-   * Create admin user (with password)
-   */
-  static async createAdmin(adminData: CreateAdminRequest) {
-    try {
-      // Check if user already exists by email
-      const existingUserByEmail = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, adminData.email))
-        .limit(1);
-
-      if (existingUserByEmail.length > 0) {
-        throw new CustomError('User with this email already exists', 409);
-      }
-
-      // Check if username already exists
-      const existingUserByUsername = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, adminData.username))
-        .limit(1);
-
-      if (existingUserByUsername.length > 0) {
-        throw new CustomError('Username is already taken', 409);
-      }
-
-      // Check if mobile number already exists
-      const existingUserByMobile = await db
-        .select()
-        .from(users)
-        .where(eq(users.mobileNumber, adminData.mobileNumber))
-        .limit(1);
-
-      if (existingUserByMobile.length > 0) {
-        throw new CustomError('User with this mobile number already exists', 409);
-      }
-
-      // Hash password
-      const hashedPassword = await AuthService.hashPassword(adminData.password);
-
-      // Create admin user
-      const newAdmin = await db
-        .insert(users)
-        .values({
-          name: adminData.name,
-          username: adminData.username,
-          email: adminData.email,
-          mobileNumber: adminData.mobileNumber,
-          password: hashedPassword,
-          role: 'admin',
-          isInfluencer: false,
-        })
-        .returning({
-          id: users.id,
-          name: users.name,
-          username: users.username,
-          email: users.email,
-          mobileNumber: users.mobileNumber,
-          role: users.role,
-          createdAt: users.createdAt,
-        });
-
-      const admin = newAdmin[0];
-      const token = AuthService.generateToken(admin.id, admin.email, admin.role);
-
-      return {
-        user: admin,
-        token,
-      };
-    } catch (error) {
-      if (error instanceof CustomError) {
-        throw error;
-      }
-      throw new CustomError('Failed to create admin account', 500);
+      throw new CustomError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create user account",
+        500
+      );
     }
   }
 
@@ -212,14 +155,18 @@ export class AuthService {
         .limit(1);
 
       if (userResult.length === 0) {
-        throw new CustomError('User not found with this mobile number', 404);
+        throw new CustomError("User not found with this mobile number", 404);
       }
 
       const user = userResult[0];
 
+      if (!user) {
+        throw new CustomError("User not found with this mobile number", 404);
+      }
+
       // Only allow OTP for regular users, not admins
-      if (user.role === 'admin') {
-        throw new CustomError('Admin users must use password-based login', 400);
+      if (user.role === "admin") {
+        throw new CustomError("Admin users must use password-based login", 400);
       }
 
       // Send OTP
@@ -229,7 +176,100 @@ export class AuthService {
       if (error instanceof CustomError) {
         throw error;
       }
-      throw new CustomError('Failed to send OTP', 500);
+      throw new CustomError(
+        error instanceof Error ? error.message : "Failed to send OTP",
+        500
+      );
+    }
+  }
+
+  /**
+   * Create admin user (with password)
+   */
+  static async createAdmin(adminData: CreateAdminRequest) {
+    try {
+      // Check if user already exists by email
+      const existingUserByEmail = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, adminData.email))
+        .limit(1);
+
+      if (existingUserByEmail.length > 0) {
+        throw new CustomError("User with this email already exists", 409);
+      }
+
+      // Check if username already exists
+      const existingUserByUsername = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, adminData.username))
+        .limit(1);
+
+      if (existingUserByUsername.length > 0) {
+        throw new CustomError("Username is already taken", 409);
+      }
+
+      // Check if mobile number already exists
+      const existingUserByMobile = await db
+        .select()
+        .from(users)
+        .where(eq(users.mobileNumber, adminData.mobileNumber))
+        .limit(1);
+
+      if (existingUserByMobile.length > 0) {
+        throw new CustomError(
+          "User with this mobile number already exists",
+          409
+        );
+      }
+
+      // Hash password
+      const hashedPassword = await AuthService.hashPassword(adminData.password);
+
+      // Create admin user
+      const newAdmin = await db
+        .insert(users)
+        .values({
+          name: adminData.name,
+          username: adminData.username,
+          email: adminData.email,
+          mobileNumber: adminData.mobileNumber,
+          password: hashedPassword,
+          role: "admin",
+          isInfluencer: false,
+        })
+        .returning({
+          id: users.id,
+          name: users.name,
+          username: users.username,
+          email: users.email,
+          mobileNumber: users.mobileNumber,
+          role: users.role,
+          createdAt: users.createdAt,
+        });
+
+      const admin = newAdmin[0];
+
+      if (!admin) {
+        throw new CustomError("Failed to create admin account", 500);
+      }
+
+      const token = AuthService.generateToken(
+        admin.id,
+        admin.email,
+        admin.role
+      );
+
+      return {
+        user: admin,
+        token,
+      };
+    } catch (error) {
+      if (error instanceof CustomError) {
+        throw error;
+      }
+      throw new CustomError("Failed to create admin account", 500);
     }
   }
 
@@ -262,10 +302,14 @@ export class AuthService {
         .limit(1);
 
       if (userResult.length === 0) {
-        throw new CustomError('User not found', 404);
+        throw new CustomError("User not found", 404);
       }
 
       const user = userResult[0];
+
+      if (!user) {
+        throw new CustomError("User not found", 404);
+      }
 
       // Generate token
       const token = AuthService.generateToken(user.id, user.email, user.role);
@@ -278,7 +322,7 @@ export class AuthService {
       if (error instanceof CustomError) {
         throw error;
       }
-      throw new CustomError('Failed to verify OTP and login', 500);
+      throw new CustomError("Failed to verify OTP and login", 500);
     }
   }
 
@@ -289,25 +333,46 @@ export class AuthService {
     try {
       // Find user by email
       const userResult = await db
-        .select()
+        .select({
+          id: users.id,
+          name: users.name,
+          username: users.username,
+          email: users.email,
+          mobileNumber: users.mobileNumber,
+          password: users.password,
+          role: users.role,
+          isInfluencer: users.isInfluencer,
+          influencerUrl: users.influencerUrl,
+          avatar: users.avatar,
+          verified: users.verified,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        })
         .from(users)
         .where(eq(users.email, credentials.email))
         .limit(1);
 
       if (userResult.length === 0) {
-        throw new CustomError('Invalid email or password', 401);
+        throw new CustomError("Invalid email or password", 401);
       }
 
       const user = userResult[0];
 
+      if (!user) {
+        throw new CustomError("User not found", 404);
+      }
+
       // Check if user is admin
-      if (user.role !== 'admin') {
-        throw new CustomError('Access denied. Admin credentials required.', 403);
+      if (user.role !== "admin") {
+        throw new CustomError(
+          "Access denied. Admin credentials required.",
+          403
+        );
       }
 
       // Check if password exists
       if (!user.password) {
-        throw new CustomError('Invalid email or password', 401);
+        throw new CustomError("Invalid email or password", 401);
       }
 
       // Verify password
@@ -317,7 +382,7 @@ export class AuthService {
       );
 
       if (!isPasswordValid) {
-        throw new CustomError('Invalid email or password', 401);
+        throw new CustomError("Invalid email or password", 401);
       }
 
       // Generate token
@@ -334,7 +399,7 @@ export class AuthService {
       if (error instanceof CustomError) {
         throw error;
       }
-      throw new CustomError('Failed to sign in', 500);
+      throw new CustomError("Failed to sign in", 500);
     }
   }
 
@@ -363,7 +428,7 @@ export class AuthService {
         .limit(1);
 
       if (userResult.length === 0) {
-        throw new CustomError('User not found', 404);
+        throw new CustomError("User not found", 404);
       }
 
       return userResult[0];
@@ -371,7 +436,7 @@ export class AuthService {
       if (error instanceof CustomError) {
         throw error;
       }
-      throw new CustomError('Failed to get user', 500);
+      throw new CustomError("Failed to get user", 500);
     }
   }
 
@@ -386,7 +451,7 @@ export class AuthService {
         role: string;
       };
     } catch (error) {
-      throw new CustomError('Invalid or expired token', 401);
+      throw new CustomError("Invalid or expired token", 401);
     }
   }
 }
