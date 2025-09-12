@@ -4,7 +4,9 @@ import { env } from '../config/env.js';
 import { CustomError } from '../middleware/error-handler.js';
 
 export class UploadService {
+
   private static s3Client = new S3Client({
+    
     region: env.R2_REGION,
     endpoint: env.R2_S3_ENDPOINT,
     credentials: {
@@ -25,7 +27,7 @@ export class UploadService {
     try {
       // Validate content type
       if (!UploadService.isValidContentType(contentType)) {
-        throw new CustomError('Invalid content type. Only images are allowed.', 400);
+        throw new CustomError('Invalid content type. Only images and videos are allowed.', 400);
       }
 
       // Generate unique key
@@ -89,6 +91,54 @@ export class UploadService {
   }
 
   /**
+   * Direct upload to R2 (proxy method)
+   */
+  static async uploadDirect(
+    fileBuffer: Buffer, 
+    contentType: string, 
+    keyPrefix?: string
+  ): Promise<{ publicUrl: string; key: string }> {
+    try {
+      // Validate content type
+      if (!UploadService.isValidContentType(contentType)) {
+        throw new CustomError('Invalid content type. Only images and videos are allowed.', 400);
+      }
+
+      // Generate unique key
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const extension = UploadService.getFileExtension(contentType);
+      const key = `${keyPrefix || 'uploads/'}${timestamp}-${randomString}${extension}`;
+
+      // Upload directly to R2
+      const command = new PutObjectCommand({
+        Bucket: env.R2_BUCKET,
+        Key: key,
+        Body: fileBuffer,
+        ContentType: contentType,
+      });
+
+      await UploadService.s3Client.send(command);
+
+      // Generate public URL
+      const publicUrl = env.R2_PUBLIC_BASE_URL
+        ? `${env.R2_PUBLIC_BASE_URL}/${key}`
+        : `${env.R2_S3_ENDPOINT.replace('https://', `https://${env.R2_BUCKET}.`)}/${key}`;
+
+      return {
+        publicUrl,
+        key,
+      };
+    } catch (error) {
+      if (error instanceof CustomError) {
+        throw error;
+      }
+      console.error('Direct upload failed:', error);
+      throw new CustomError('Failed to upload file', 500);
+    }
+  }
+
+  /**
    * Extract key from public URL
    */
   static extractKeyFromUrl(url: string): string | null {
@@ -129,6 +179,10 @@ export class UploadService {
       'image/png',
       'image/gif',
       'image/webp',
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/webm',
     ];
     return allowedTypes.includes(contentType.toLowerCase());
   }
@@ -143,6 +197,10 @@ export class UploadService {
       'image/png': '.png',
       'image/gif': '.gif',
       'image/webp': '.webp',
+      'video/mp4': '.mp4',
+      'video/quicktime': '.mov',
+      'video/x-msvideo': '.avi',
+      'video/webm': '.webm',
     };
     return extensions[contentType.toLowerCase()] || '.jpg';
   }

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './auth-routes.js';
 import postRoutes from './post-routes.js';
+import reelRoutes from './reel-routes.js';
 import uploadRoutes from './upload-routes.js';
 
 const router = Router();
@@ -30,6 +31,7 @@ router.get('/', (req, res) => {
         profile: '/api/auth/profile',
       },
       posts: '/api/posts',
+      reels: '/api/reels',
       uploads: '/api/uploads',
     },
   });
@@ -38,6 +40,7 @@ router.get('/', (req, res) => {
 // API routes
 router.use('/auth', authRoutes);
 router.use('/posts', postRoutes);
+router.use('/reels', reelRoutes);
 router.use('/uploads', uploadRoutes);
 
 export default router;

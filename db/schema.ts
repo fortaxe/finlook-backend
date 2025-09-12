@@ -68,6 +68,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   comments: many(comments),
   likes: many(likes),
   bookmarks: many(bookmarks),
+  reels: many(reels),
+  reelComments: many(reelComments),
+  reelLikes: many(reelLikes),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -120,6 +123,77 @@ export const bookmarksRelations = relations(bookmarks, ({ one }) => ({
   post: one(posts, {
     fields: [bookmarks.postId],
     references: [posts.id],
+  }),
+}));
+
+// Reels table
+export const reels = pgTable('reels', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  videoUrl: varchar('video_url', { length: 500 }).notNull(),
+  content: text('content'),
+  likes: integer('likes').notNull().default(0),
+  shares: integer('shares').notNull().default(0),
+  duration: integer('duration').notNull(), // in seconds
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Reel comments table
+export const reelComments = pgTable('reel_comments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reelId: uuid('reel_id').notNull().references(() => reels.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: text('content'),
+  images: jsonb('images').$type<string[]>(), // Array of image URLs
+  likes: integer('likes').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Update likes table to support reels and reel comments
+export const reelLikes = pgTable('reel_likes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reelId: uuid('reel_id').references(() => reels.id, { onDelete: 'cascade' }),
+  reelCommentId: uuid('reel_comment_id').references(() => reelComments.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// Reel relations
+export const reelsRelations = relations(reels, ({ one, many }) => ({
+  user: one(users, {
+    fields: [reels.userId],
+    references: [users.id],
+  }),
+  comments: many(reelComments),
+  likes: many(reelLikes),
+}));
+
+export const reelCommentsRelations = relations(reelComments, ({ one, many }) => ({
+  reel: one(reels, {
+    fields: [reelComments.reelId],
+    references: [reels.id],
+  }),
+  user: one(users, {
+    fields: [reelComments.userId],
+    references: [users.id],
+  }),
+  likes: many(reelLikes),
+}));
+
+export const reelLikesRelations = relations(reelLikes, ({ one }) => ({
+  user: one(users, {
+    fields: [reelLikes.userId],
+    references: [users.id],
+  }),
+  reel: one(reels, {
+    fields: [reelLikes.reelId],
+    references: [reels.id],
+  }),
+  reelComment: one(reelComments, {
+    fields: [reelLikes.reelCommentId],
+    references: [reelComments.id],
   }),
 }));
 

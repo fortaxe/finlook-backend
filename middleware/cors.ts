@@ -12,14 +12,14 @@ const corsOptions: cors.CorsOptions = {
     }
     
     // In production, define allowed origins
-         const allowedOrigins = [
-       'http://localhost:3000',
-       'http://localhost:8081', 
-       'http://localhost:8080', // Expo dev server
-       'http://localhost:19006', // Expo web
-       'https://www.finlook.ai'
-       // Add your production domains here
-     ];
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:8081', 
+      'http://localhost:8080', // Expo dev server
+      'http://localhost:19006', // Expo web
+      'https://www.finlook.ai'
+      // Add your production domains here
+    ];
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -37,6 +37,8 @@ const corsOptions: cors.CorsOptions = {
     'Authorization',
     'Cache-Control',
     'X-Cache-Date',
+    'Content-Length',
+    'Content-Range',
   ],
 };
 

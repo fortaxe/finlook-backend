@@ -18,6 +18,7 @@ export class PostService {
    */
   static async createPost(userId: string, postData: CreatePostRequest) {
     try {
+      console.log('postData', postData);
       const newPost = await db
         .insert(posts)
         .values({
