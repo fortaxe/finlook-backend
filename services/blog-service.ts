@@ -70,16 +70,19 @@ REQUIREMENTS:
 
 FOR EACH STORY, PROVIDE:
 - **title**: Compelling, SEO-friendly headline (60-80 characters)
-- **summary**: 2-3 sentence summary highlighting key impact and implications (150-200 words)
+- **summary**: 2-3 sentence summary highlighting key impact and implications (150-200 words) - DO NOT mention source name or "according to" references
 - **content**: Full blog-ready article (800-1200 words) with:
   * Engaging introduction
   * Key details and context
   * Market/business implications
   * Expert analysis or quotes if available
   * Conclusion with future outlook
+  * DO NOT include "source:", "according to", or reference the original news source in the content
+  * Remove ALL links, URLs, and references to external sources from within the content
+
 - **published_at**: ISO timestamp of original publication
-- **source_name**: Original news source
-- **source_url**: Direct link to original article
+- **source_name**: Original news source (ONLY place to mention source name)
+- **source_url**: Direct link to original article (ONLY place to mention source URL)
 - **tags**: 5-7 relevant tags for categorization
 - **region**: Affected regions/countries
 - **companies**: Mentioned companies/brands
@@ -92,19 +95,31 @@ IMAGE REQUIREMENTS:
 For each story, try to find:
 1. **Direct image URLs**: Look for images from the original news source or related official sources
 2. **Free stock images**: Provide direct download URLs from Unsplash, Pexels, or similar free platforms
-3. **Image attribution**: Include proper attribution and license information
-4. **Fallback description**: If no direct URL available, try to find a image from the internet and provide the url
+3. **Image accessibility**: CRITICAL - Ensure all image URLs are accessible and return valid images (not 404 errors)
+4. **Image attribution**: Include proper attribution and license information
+5. **NO WATERMARKS**: CRITICAL - Only use images that are completely watermark-free and clean
+
+
+IMPORTANT IMAGE ACCESSIBILITY RULES:
+- Test image URLs before including them
+- For Unsplash: Use direct image URLs that work (avoid expired or moved links)
+- For Pexels: Ensure URLs are current and accessible
+- If an image URL returns 404 or is inaccessible, do NOT include it
+- Better to have no image than a broken image URL
+- **WATERMARK CHECK**: Verify that images do NOT have any watermarks, logos, or text overlays before including them
+- **CLEAN IMAGES ONLY**: Only use professional, clean images without any branding, watermarks, or text overlays
 
 PREFERRED IMAGE SOURCES:
-- Original news article images (if availableS)
-- Unsplash financial/business images with direct download URLs
-- Pexels professional images with direct links
-- Company logos or official images (if publicly available)
+- Original news article images (if available and watermark-free)
+- Unsplash financial/business images with direct download URLs (watermark-free versions only)
+- Pexels professional images with direct links (clean, no watermarks)
+- Company logos or official images (if publicly available and clean)
+- **AVOID**: Any stock photo sites that add watermarks or require attribution overlays
 
 IMAGE OUTPUT FORMAT:
 \`\`\`json
 "image": {
-  "url": "direct_download_url_here",
+  "url": "direct_download_url_here", // MUST be accessible and working (no 404 errors)
   "source": "unsplash/pexels/news_source",
   "attribution": "Photo by [Author] on [Platform]",
   "license": "license_type",
@@ -117,6 +132,13 @@ Target 5 stories if available, but provide between 2-5 stories. Quality over qua
 
 OUTPUT FORMAT:
 Return as clean JSON array with 2-5 stories, ensuring each story is complete, well-researched, and relevant to the FinLook audience interested in finance and business.
+
+CRITICAL CONTENT REQUIREMENTS:
+1. **Source Removal**: Do NOT mention "source", "according to [source name]", or any reference to the original news source in the title, summary, content, tags, or any other field except source_name and source_url.
+2. **Link Removal**: Remove ALL links, URLs, and external references from within the content. Read the full source article and strip out any embedded links, source references, or external URLs.
+
+
+IMAGE URL VERIFICATION: Before including any image URL, ensure it is accessible and returns a valid image. Test Unsplash, Pexels, and other free platform URLs to confirm they work. If an image URL is broken or returns 404, do not include the image field at all. **CRITICAL**: Only use images that are completely free of watermarks, logos, or text overlays. Verify image quality and cleanliness before including.
 
 Focus on stories that would help FinLook users make better financial and business decisions - market analysis, policy impacts, business developments, startup news, economic indicators, corporate earnings, etc.`,
       });

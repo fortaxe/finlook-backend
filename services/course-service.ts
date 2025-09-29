@@ -1,4 +1,4 @@
-import { eq, desc, and, count, asc } from 'drizzle-orm';
+import { eq, desc, and, count, asc, sql } from 'drizzle-orm';
 import { db } from '../config/database.js';
 import { courses, coursePurchases,  courseVideos } from '../db/schema.js';
 import { CustomError } from '../middleware/error-handler.js';
@@ -95,9 +95,13 @@ export class CourseService {
               )
               .limit(1);
 
+            // Get video count for this course
+            const videoCount = await this.getCourseVideoCount(course.id);
+
             return {
               ...course,
               isPurchased: purchase.length > 0,
+              sessionCount: videoCount,
             };
           })
         );
@@ -105,11 +109,19 @@ export class CourseService {
         return coursesWithPurchaseStatus;
       }
 
-      // If no user, return courses without purchase status
-      return allCourses.map(course => ({
-        ...course,
-        isPurchased: false,
-      }));
+      // If no user, return courses without purchase status but with session count
+      const coursesWithSessionCount = await Promise.all(
+        allCourses.map(async (course) => {
+          const videoCount = await this.getCourseVideoCount(course.id);
+          return {
+            ...course,
+            isPurchased: false,
+            sessionCount: videoCount,
+          };
+        })
+      );
+
+      return coursesWithSessionCount;
     } catch (error) {
       console.log('Error getting courses:', error);
       throw new CustomError('Failed to get courses', 500);
@@ -150,9 +162,13 @@ export class CourseService {
         isPurchased = purchase.length > 0;
       }
 
+      // Get video count for this course
+      const videoCount = await this.getCourseVideoCount(courseId);
+
       return {
         ...course,
         isPurchased,
+        sessionCount: videoCount,
       };
     } catch (error) {
       if (error instanceof CustomError) {
@@ -417,6 +433,37 @@ export class CourseService {
         throw error;
       }
       throw new CustomError('Failed to get course videos', 500);
+    }
+  }
+
+  /**
+   * Get course video count (public - no purchase required)
+   */
+  static async getCourseVideoCount(courseId: string) {
+    try {
+      // Check if course exists
+      const courseResult = await db
+        .select()
+        .from(courses)
+        .where(eq(courses.id, courseId))
+        .limit(1);
+
+      if (courseResult.length === 0) {
+        throw new CustomError('Course not found', 404);
+      }
+
+      // Get count of active videos for the course
+      const videoCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(courseVideos)
+        .where(and(eq(courseVideos.courseId, courseId), eq(courseVideos.isActive, true)));
+
+      return videoCountResult[0]?.count || 0;
+    } catch (error) {
+      if (error instanceof CustomError) {
+        throw error;
+      }
+      throw new CustomError('Failed to get course video count', 500);
     }
   }
 
