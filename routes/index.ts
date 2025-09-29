@@ -3,6 +3,8 @@ import authRoutes from './auth-routes.js';
 import postRoutes from './post-routes.js';
 import reelRoutes from './reel-routes.js';
 import uploadRoutes from './upload-routes.js';
+import courseRoutes from './course-routes.js';
+import blogRoutes from './blog-routes.js';
 
 const router = Router();
 
@@ -33,6 +35,8 @@ router.get('/', (req, res) => {
       posts: '/api/posts',
       reels: '/api/reels',
       uploads: '/api/uploads',
+      courses: '/api/courses',
+      blogs: '/api/blogs',
     },
   });
 });
@@ -42,5 +46,7 @@ router.use('/auth', authRoutes);
 router.use('/posts', postRoutes);
 router.use('/reels', reelRoutes);
 router.use('/uploads', uploadRoutes);
+router.use('/courses', courseRoutes);
+router.use('/blogs', blogRoutes);
 
 export default router;

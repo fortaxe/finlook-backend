@@ -22,6 +22,27 @@
       "when": 1757664314973,
       "tag": "0002_careless_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1758968978657,
+      "tag": "0003_confused_firedrake",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1759035983795,
+      "tag": "0004_fresh_post",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1759069258238,
+      "tag": "0005_narrow_rictor",
+      "breakpoints": true
     }
   ]
 }

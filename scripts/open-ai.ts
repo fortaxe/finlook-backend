@@ -1,0 +1,90 @@
+import OpenAI from "openai";
+
+if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set");
+}
+
+const client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+const response = await client.responses.create({
+    model: "gpt-5",
+    tools: [
+        { type: "web_search" },
+    ],
+    input: `You are a professional financial news curator for "FinLook" - a premier Indian fintech and financial education platform. I need you to find and curate 2-5 high-quality finance-focused Indian news stories from the last 24 hours (today: ${new Date().toISOString().split('T')[0]}). Aim for 5 stories if possible, but minimum 2 stories required.
+
+REQUIREMENTS:
+1. **Timeframe**: Only news from the last 24 hours (today and yesterday maximum)
+2. **Geography**: Focus on India - Indian financial markets, banking, fintech, or global financial news affecting India
+3. **Content Focus**: Target 5 stories, minimum 2 required. Prioritize:
+   - **Primary**: Banking & Financial Services (RBI policies, bank earnings, lending trends)
+   - **Primary**: Fintech & Digital Payments (UPI, digital lending, neobanks, payment innovations)
+   - **Primary**: Stock Markets & Investments (NSE/BSE movements, IPOs, mutual funds, FII/DII flows)
+   - **Secondary**: Business & Startups (funding, acquisitions, expansions, new launches)
+   - **Secondary**: Economic Policy & Corporate News (regulations, government policies, earnings)
+   - **Secondary**: Technology & Innovation (AI, digital transformation, e-commerce)
+   - **Acceptable**: Any significant business news with financial implications for India
+4. **Quality**: Choose newsworthy stories from reputable sources. PRIORITY ORDER:
+   - **Tier 1**: Economic Times, Mint, Bloomberg, Reuters, Business Standard, Moneycontrol
+   - **Tier 2**: Financial Express, CNBC-TV18, Hindu BusinessLine, LiveMint, Times of India Business
+   - **Tier 3**: FirstPost Business, News18 Business, India Today Business, NDTV Business
+   - **Global with India angle**: Wall Street Journal, Financial Times, CNN Business (if India-related)
+5. **Flexibility**: If not enough finance stories available, include general business stories with financial implications
+6. **Relevance**: Stories that would educate and inform Indian investors, financial professionals, and business enthusiasts
+
+FOR EACH STORY, PROVIDE:
+- **title**: Compelling, SEO-friendly headline (60-80 characters)
+- **summary**: 2-3 sentence summary highlighting key impact and implications (150-200 words)
+- **content**: Full blog-ready article (800-1200 words) with:
+  * Engaging introduction
+  * Key details and context
+  * Market/business implications
+  * Expert analysis or quotes if available
+  * Conclusion with future outlook
+- **published_at**: ISO timestamp of original publication
+- **source_name**: Original news source
+- **source_url**: Direct link to original article
+- **tags**: 5-7 relevant tags for categorization
+- **region**: Affected regions/countries
+- **companies**: Mentioned companies/brands
+- **sector**: Primary business sector
+- **financial_impact**: Analysis of how this news affects investors, markets, or personal finance decisions
+- **key_numbers**: Important financial figures, percentages, or data points from the story
+- **image_info**: Find and provide real image URLs when possible
+
+IMAGE REQUIREMENTS:
+For each story, try to find:
+1. **Direct image URLs**: Look for images from the original news source or related official sources
+2. **Free stock images**: Provide direct download URLs from Unsplash, Pexels, or similar free platforms
+3. **Image attribution**: Include proper attribution and license information
+4. **Fallback description**: If no direct URL available, try to find a image from the internet and provide the url
+
+PREFERRED IMAGE SOURCES:
+- Original news article images (if availableS)
+- Unsplash financial/business images with direct download URLs
+- Pexels professional images with direct links
+- Company logos or official images (if publicly available)
+
+IMAGE OUTPUT FORMAT:
+\`\`\`json
+"image": {
+  "url": "direct_download_url_here",
+  "source": "unsplash/pexels/news_source",
+  "attribution": "Photo by [Author] on [Platform]",
+  "license": "license_type",
+  "alt_text": "descriptive_text_for_accessibility"
+}
+\`\`\`
+
+QUANTITY REQUIREMENT:
+Target 5 stories if available, but provide between 2-5 stories. Quality over quantity - better to have 2-3 excellent stories than forcing 5 mediocre ones.
+
+OUTPUT FORMAT:
+Return as clean JSON array with 2-5 stories, ensuring each story is complete, well-researched, and relevant to the FinLook audience interested in finance and business.
+
+Focus on stories that would help FinLook users make better financial and business decisions - market analysis, policy impacts, business developments, startup news, economic indicators, corporate earnings, etc.`,
+});
+
+console.log(response.output_text);

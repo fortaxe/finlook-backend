@@ -7,6 +7,7 @@ const envSchema = z.object({
     (val) => typeof val === 'string' ? parseInt(val, 10) : val,
     z.number().default(3000)
   ),
+  HOST: z.string().default('localhost'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
   // Cloudflare R2 Configuration

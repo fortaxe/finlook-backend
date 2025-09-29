@@ -3,10 +3,9 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { env } from './config/env.js';
 import { connectRedis } from './config/redis.js';
-import { corsMiddleware } from './middleware/cors.js';
 import { securityMiddleware, compressionMiddleware, rateLimitMiddleware } from './middleware/security.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
-
+import cors from 'cors';
 // Load environment variables
 dotenv.config();
 
@@ -20,7 +19,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Security middleware
 app.use(securityMiddleware);
 app.use(compressionMiddleware);
-// app.use(corsMiddleware);
+app.use(cors());
 app.use(rateLimitMiddleware);
 
 // Health check endpoint
@@ -37,6 +36,17 @@ app.get('/health', (req, res) => {
 import apiRoutes from './routes/index.js';
 app.use('/api', apiRoutes);
 
+// Import and start blog scheduler
+import { dailyBlogScheduler } from './scripts/daily-blog-scheduler.js';
+
+// test endpoint
+app.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Test endpoint',
+  });
+});
+
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -47,11 +57,19 @@ async function startServer(): Promise<void> {
     // Connect to Redis
     await connectRedis();
     
+    // Start blog scheduler
+    dailyBlogScheduler.start();
+    
     // Start server
-    app.listen(env.PORT, () => {
-      console.log(`🚀 Server running on port ${env.PORT}`);
+    const host = env.NODE_ENV === 'development' ? '0.0.0.0' : env.HOST;
+    app.listen(env.PORT, host, () => {
+      console.log(`🚀 Server running on ${host}:${env.PORT}`);
       console.log(`📱 Environment: ${env.NODE_ENV}`);
-      console.log(`🔗 Health check: http://localhost:${env.PORT}/app`);
+      console.log(`🔗 Health check: http://${host}:${env.PORT}/health`);
+      console.log(`📝 Blog API: http://${host}:${env.PORT}/api/blogs`);
+      if (env.NODE_ENV === 'development') {
+        console.log(`🌐 Network access: http://10.65.2.187:${env.PORT}/health`);
+      }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
