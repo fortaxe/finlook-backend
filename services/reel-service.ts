@@ -111,6 +111,78 @@ export class ReelService {
   }
 
   /**
+   * Get reels by user ID
+   */
+  static async getUserReels(targetUserId: string, pagination: PaginationQuery, currentUserId?: string) {
+    try {
+      const { page, limit } = pagination;
+      const offset = (page - 1) * limit;
+
+      // Get total count for this user
+      const totalResult = await db
+        .select({ count: count() })
+        .from(reels)
+        .where(eq(reels.userId, targetUserId));
+
+      const total = totalResult[0]?.count || 0;
+
+      // Build query for user's reels
+      const result = await db
+        .select({
+          id: reels.id,
+          videoUrl: reels.videoUrl,
+          content: reels.content,
+          likes: reels.likes,
+          shares: reels.shares,
+          duration: reels.duration,
+          createdAt: reels.createdAt,
+          updatedAt: reels.updatedAt,
+          author: {
+            id: users.id,
+            name: users.name,
+            username: users.username,
+            avatar: users.avatar,
+            verified: users.verified,
+          },
+          commentsCount: sql<number>`(
+            SELECT COUNT(*)::int 
+            FROM ${reelComments} 
+            WHERE ${reelComments.reelId} = ${reels.id}
+          )`,
+          isLiked: currentUserId ? sql<boolean>`(
+            SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END
+            FROM ${reelLikes}
+            WHERE ${reelLikes.reelId} = ${reels.id} AND ${reelLikes.userId} = ${currentUserId}
+          )` : sql<boolean>`false`,
+        })
+        .from(reels)
+        .leftJoin(users, eq(reels.userId, users.id))
+        .where(eq(reels.userId, targetUserId))
+        .orderBy(desc(reels.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      const paginationData = {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      };
+
+      return {
+        data: result,
+        pagination: paginationData,
+      };
+
+    } catch (error) {
+      console.log('error in getUserReels:', error);
+      throw new CustomError('Failed to fetch user reels', 500);
+    }
+  }
+
+  /**
    * Get reel by ID
    */
   static async getReelById(reelId: string, userId?: string) {

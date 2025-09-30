@@ -12,6 +12,7 @@ router.use(authMiddleware(['user']));
 router.post('/', postController.createPost);
 router.post('/retweet', postController.createRetweet);
 router.get('/', postController.getPosts);
+router.get('/user/:userId', postController.getUserPosts);
 router.get('/:id', postController.getPostById);
 router.put('/:id', postController.updatePost);
 router.delete('/:id', postController.deletePost);

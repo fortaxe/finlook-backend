@@ -17,7 +17,7 @@ class DailyBlogScheduler {
     }
 
     this.cronJob = cron.schedule(
-    '17 10 * * *',
+    '31 12 * * *',
       async () => {
         if (this.isRunning) {
           console.log('⏳ Blog generation already in progress, skipping...');

@@ -6,7 +6,8 @@ import {
   sendOtpSchema, 
   verifyOtpSchema, 
   adminSignInSchema,
-  createAdminSchema 
+  createAdminSchema,
+  updateProfileSchema 
 } from '../validations/auth-validation.js';
 import { authRateLimitMiddleware } from '../middleware/security.js';
 
@@ -69,6 +70,17 @@ export class AuthController extends BaseController {
     const user = await AuthService.getUserById(userId);
     
     this.sendSuccess(res, { user }, 'Profile retrieved successfully');
+  });
+
+  /**
+   * Update user profile
+   */
+  updateProfile = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as any).user?.userId;
+    const updateData = this.validateBody(updateProfileSchema, req.body);
+    const user = await AuthService.updateProfile(userId, updateData);
+    
+    this.sendSuccess(res, { user }, 'Profile updated successfully');
   });
 
   /**

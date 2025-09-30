@@ -21,6 +21,18 @@ export abstract class BaseController {
     try {
       return schema.parse(data);
     } catch (error) {
+      console.error('Validation error details:', error);
+      console.error('Data being validated:', JSON.stringify(data, null, 2));
+      
+      if (error instanceof z.ZodError) {
+        const errorMessages = error.issues.map((err: z.ZodIssue) => ({
+          field: err.path.join('.'),
+          message: err.message
+        }));
+        console.error('Zod validation errors:', errorMessages);
+        throw new CustomError(`Validation failed: ${JSON.stringify(errorMessages)}`, 400);
+      }
+      
       throw new CustomError('Validation failed', 400);
     }
   }

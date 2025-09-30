@@ -37,6 +37,22 @@ export class ReelController extends BaseController {
   });
 
   /**
+   * Get user's reels by user ID
+   */
+  getUserReels = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const currentUserId = (req as any).user?.userId;
+    const { userId } = req.params;
+    const pagination = this.validateQuery(paginationSchema, req.query);
+
+    if (!userId) {
+      return this.sendError(res, 'User ID is required', 400);
+    }
+
+    const result = await ReelService.getUserReels(userId, pagination, currentUserId);
+    this.sendPaginatedSuccess(res, result.data, result.pagination, 'User reels retrieved successfully');
+  });
+
+  /**
    * Get reel by ID
    */
   getReelById = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {

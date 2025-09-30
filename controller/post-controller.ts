@@ -45,9 +45,23 @@ export class PostController extends BaseController {
     const pagination = this.validateQuery(paginationSchema, req.query);
   
     const result = await PostService.getPosts(pagination, userId);
-
-    
     this.sendPaginatedSuccess(res, result.data, result.pagination, 'Posts retrieved successfully');
+  });
+
+  /**
+   * Get user's posts by user ID
+   */
+  getUserPosts = this.asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const currentUserId = (req as any).user?.userId;
+    const { userId } = req.params;
+    const pagination = this.validateQuery(paginationSchema, req.query);
+
+    if (!userId) {
+      return this.sendError(res, 'User ID is required', 400);
+    }
+  
+    const result = await PostService.getUserPosts(userId, pagination, currentUserId);
+    this.sendPaginatedSuccess(res, result.data, result.pagination, 'User posts retrieved successfully');
   });
 
   /**

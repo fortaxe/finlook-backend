@@ -217,6 +217,7 @@ export class PostService {
           return {
             ...post,
             comments: postComments.comments,
+            commentsCount: postComments.pagination?.total || 0, // Add total count
             isLiked,
             isBookmarked,
             isRetweeted,
@@ -237,6 +238,129 @@ export class PostService {
     } catch (error) {
       console.log('Error in getPosts:', error);
       throw new CustomError('Failed to get posts', 500);
+    }
+  }
+
+  /**
+   * Get posts by user ID
+   */
+  static async getUserPosts(targetUserId: string, pagination: PaginationQuery, currentUserId?: string) {
+    try {
+      const offset = (pagination.page - 1) * pagination.limit;
+
+      const postsResult = await db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          images: posts.images,
+          likes: posts.likes,
+          shares: posts.shares,
+          bookmarks: posts.bookmarks,
+          isRetweet: posts.isRetweet,
+          originalPostId: posts.originalPostId,
+          createdAt: posts.createdAt,
+          updatedAt: posts.updatedAt,
+          user: {
+            id: users.id,
+            name: users.name,
+            username: users.username,
+            email: users.email,
+            mobileNumber: users.mobileNumber,
+            isInfluencer: users.isInfluencer,
+            influencerUrl: users.influencerUrl,
+            avatar: users.avatar,
+            verified: users.verified,
+          },
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(eq(posts.userId, targetUserId))
+        .orderBy(desc(posts.createdAt))
+        .limit(pagination.limit)
+        .offset(offset);
+
+      // Get total count for this user
+      const totalResult = await db
+        .select({ count: count() })
+        .from(posts)
+        .where(eq(posts.userId, targetUserId));
+
+      const total = totalResult[0]?.count || 0;
+
+      // Get comments for each post and check user interactions
+      const postsWithDetails = await Promise.all(
+        postsResult.map(async (post) => {
+          const postComments = await PostService.getPostComments(post.id, { page: 1, limit: 5 }, currentUserId);
+          
+          let isLiked = false;
+          let isBookmarked = false;
+          
+          if (currentUserId) {
+            const userLike = await db
+              .select()
+              .from(likes)
+              .where(and(eq(likes.postId, post.id), eq(likes.userId, currentUserId)))
+              .limit(1);
+            isLiked = userLike.length > 0;
+            
+            const userBookmark = await db
+              .select()
+              .from(bookmarks)
+              .where(and(eq(bookmarks.postId, post.id), eq(bookmarks.userId, currentUserId)))
+              .limit(1);
+            isBookmarked = userBookmark.length > 0;
+          }
+          
+          let isRetweeted = false;
+          if (currentUserId) {
+            const userRetweet = await db
+              .select()
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, currentUserId),
+                  eq(posts.originalPostId, post.id),
+                  eq(posts.isRetweet, true)
+                )
+              )
+              .limit(1);
+            isRetweeted = userRetweet.length > 0;
+          }
+          
+          let originalPost = null;
+          if (post.isRetweet && post.originalPostId) {
+            try {
+              const originalPostResult = await PostService.getPostById(post.originalPostId);
+              originalPost = originalPostResult;
+            } catch (error) {
+              console.log(`Original post ${post.originalPostId} not found for retweet ${post.id}`);
+            }
+          }
+          
+          return {
+            ...post,
+            comments: postComments.comments,
+            commentsCount: postComments.pagination?.total || 0, // Add total count
+            isLiked,
+            isBookmarked,
+            isRetweeted,
+            originalPost,
+          };
+        })
+      );
+
+      return {
+        data: postsWithDetails,
+        pagination: {
+          page: pagination.page,
+          limit: pagination.limit,
+          total,
+          totalPages: Math.ceil(total / pagination.limit),
+        },
+      };
+    } catch (error) {
+      console.log('Error in getUserPosts:', error);
+      throw new CustomError('Failed to get user posts', 500);
     }
   }
 

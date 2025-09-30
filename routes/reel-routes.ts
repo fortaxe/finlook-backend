@@ -11,6 +11,7 @@ router.use(authMiddleware(['user']));
 // Reel routes
 router.post('/', reelController.createReel);
 router.get('/', reelController.getReels);
+router.get('/user/:userId', reelController.getUserReels);
 router.get('/:id', reelController.getReelById);
 router.put('/:id', reelController.updateReel);
 router.delete('/:id', reelController.deleteReel);

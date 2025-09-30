@@ -20,5 +20,6 @@ router.post('/admin/create', authMiddleware(['admin']), authController.createAdm
 
 // Protected routes
 router.get('/profile', authMiddleware(['user']), authController.getProfile);
+router.put('/profile', authMiddleware(['user']), authController.updateProfile);
 
 export default router;

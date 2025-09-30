@@ -441,6 +441,73 @@ export class AuthService {
   }
 
   /**
+   * Update user profile
+   */
+  static async updateProfile(userId: string, updateData: any) {
+    try {
+      // Check if username is being updated and if it's already taken
+      if (updateData.username) {
+        const existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.username, updateData.username))
+          .limit(1);
+
+        if (existingUser.length > 0 && existingUser[0]?.id !== userId) {
+          throw new CustomError("Username is already taken", 409);
+        }
+      }
+
+      // Check if mobile number is being updated and if it's already taken
+      if (updateData.mobileNumber) {
+        const existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.mobileNumber, updateData.mobileNumber))
+          .limit(1);
+
+        if (existingUser.length > 0 && existingUser[0]?.id !== userId) {
+          throw new CustomError("Mobile number is already taken", 409);
+        }
+      }
+
+      // Update user
+      const updatedUser = await db
+        .update(users)
+        .set({
+          ...updateData,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning({
+          id: users.id,
+          name: users.name,
+          username: users.username,
+          email: users.email,
+          mobileNumber: users.mobileNumber,
+          isInfluencer: users.isInfluencer,
+          influencerUrl: users.influencerUrl,
+          avatar: users.avatar,
+          verified: users.verified,
+          role: users.role,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        });
+
+      if (updatedUser.length === 0) {
+        throw new CustomError("Failed to update profile", 500);
+      }
+
+      return updatedUser[0];
+    } catch (error) {
+      if (error instanceof CustomError) {
+        throw error;
+      }
+      throw new CustomError("Failed to update profile", 500);
+    }
+  }
+
+  /**
    * Verify JWT token
    */
   static verifyToken(token: string) {

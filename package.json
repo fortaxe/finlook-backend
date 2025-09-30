@@ -8,7 +8,9 @@
     "start": "bun index.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test:blog": "bun scripts/test-blog-generation.ts",
+    "scheduler:start": "bun scripts/daily-blog-scheduler.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
