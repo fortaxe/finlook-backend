@@ -11,7 +11,7 @@ export const signUpSchema = z.object({
     .length(10, 'Mobile number must be exactly 10 digits')
     .regex(/^[0-9]{10}$/, 'Mobile number must contain only digits'),
   isInfluencer: z.boolean().optional().default(false),
-  influencerUrl: z.string().url('Please provide a valid URL').optional(),
+  influencerUrl: z.string().optional(),
 });
 
 // OTP-based authentication for users
@@ -65,8 +65,8 @@ export const updateProfileSchema = z.object({
     .regex(/^[0-9]{10}$/, 'Mobile number must contain only digits')
     .optional(),
   isInfluencer: z.boolean().optional(),
-  influencerUrl: z.string().url('Please provide a valid URL').optional(),
-  avatar: z.string().url('Please provide a valid avatar URL').optional(),
+  influencerUrl: z.string().optional(),
+  avatar: z.string().optional(),
 });
 
 export type SignUpRequest = z.infer<typeof signUpSchema>;

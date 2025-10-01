@@ -1,6 +1,6 @@
 import { db } from '../config/database.js';
 import { blogs } from '../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { UploadService } from './upload-service.js';
 
@@ -316,6 +316,7 @@ Focus on stories that would help FinLook users make better financial and busines
       .select()
       .from(blogs)
       .where(eq(blogs.isActive, true))
+      // .orderBy(desc(blogs.publishedAt))
       .orderBy(blogs.publishedAt)
       .limit(limit)
       .offset(offset);
