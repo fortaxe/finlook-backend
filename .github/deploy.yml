@@ -1,0 +1,46 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main  # or your primary branch name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Deploy to server
+        run: |
+          ssh -o StrictHostKeyChecking=no root@82.25.109.153 << 'EOF'
+            # Stash any local changes
+            cd /var/www/finlook-backend
+            git stash
+            
+            # Pull the latest code
+            git pull origin main
+            
+            # Install dependencies
+            bun install
+            
+
+            
+            # Restart Node.js app
+            pm2 reload finlook-backend
+            
+            # Restart Nginx
+            sudo systemctl reload nginx
+          EOF

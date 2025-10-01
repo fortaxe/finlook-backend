@@ -29,7 +29,7 @@ export const compressionMiddleware = compression({
  // Rate limiting configuration
  export const rateLimitMiddleware = rateLimit({
    windowMs: 60 * 1000, // 1 minute
-   max: env.NODE_ENV === "development" ? 1000 : 15, // 15 requests per IP per minute in production
+   max: env.NODE_ENV === "development" ? 1000 : 40, // 15 requests per IP per minute in production
    message: {
      success: false,
      message: 'Too many requests from this IP, please try again later.',
@@ -41,7 +41,7 @@ export const compressionMiddleware = compression({
 // Strict rate limiting for auth endpoints
 export const authRateLimitMiddleware = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: env.NODE_ENV === 'development' ? 100 : 5, // Limit auth attempts
+  max: env.NODE_ENV === 'development' ? 100 : 10, // Limit auth attempts
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later.',

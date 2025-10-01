@@ -5,7 +5,7 @@ import { env } from './config/env.js';
 import { connectRedis } from './config/redis.js';
 import { securityMiddleware, compressionMiddleware, rateLimitMiddleware } from './middleware/security.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
-import cors from 'cors';
+import { corsMiddleware } from './middleware/cors.js';
 // Load environment variables
 dotenv.config();
 
@@ -19,7 +19,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Security middleware
 app.use(securityMiddleware);
 app.use(compressionMiddleware);
-app.use(cors());
+app.use(corsMiddleware);
 app.use(rateLimitMiddleware);
 
 // Health check endpoint
