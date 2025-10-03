@@ -61,7 +61,7 @@ async function startServer(): Promise<void> {
     dailyBlogScheduler.start();
     
     // Start server
-    const host = env.NODE_ENV === 'development' ? '0.0.0.0' : env.HOST;
+    const host = env.NODE_ENV === 'development' ? 'localhost' : env.HOST;
     app.listen(env.PORT, host, () => {
       console.log(`🚀 Server running on ${host}:${env.PORT}`);
       console.log(`📱 Environment: ${env.NODE_ENV}`);

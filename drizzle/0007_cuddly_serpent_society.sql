@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "waitlist_count" integer DEFAULT 562 NOT NULL;

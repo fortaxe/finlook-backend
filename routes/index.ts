@@ -5,6 +5,7 @@ import reelRoutes from './reel-routes.js';
 import uploadRoutes from './upload-routes.js';
 import courseRoutes from './course-routes.js';
 import blogRoutes from './blog-routes.js';
+import waitlistRoutes from './waitlist-routes.js';
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.get('/', (req, res) => {
       uploads: '/api/uploads',
       courses: '/api/courses',
       blogs: '/api/blogs',
+      waitlist: '/api/waitlist',
     },
   });
 });
@@ -48,5 +50,6 @@ router.use('/reels', reelRoutes);
 router.use('/uploads', uploadRoutes);
 router.use('/courses', courseRoutes);
 router.use('/blogs', blogRoutes);
+router.use('/waitlist', waitlistRoutes);
 
 export default router;

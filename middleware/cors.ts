@@ -14,6 +14,7 @@ const corsOptions: cors.CorsOptions = {
     // In production, define allowed origins
     const allowedOrigins = [
       'http://localhost:3000',
+      'http://localhost:3002',
       'http://localhost:8081', 
       'http://localhost:8080', // Expo dev server
       'http://localhost:19006', // Expo web

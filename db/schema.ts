@@ -13,6 +13,8 @@ export const users = pgTable('users', {
   isInfluencer: boolean('is_influencer').notNull().default(false),
   influencerUrl: varchar('influencer_url', { length: 255 }),
   avatar: varchar('avatar', { length: 500 }),
+  isWaitlisted: boolean('is_waitlisted').notNull().default(true),
+  waitlistCount: integer('waitlist_count').notNull().default(562),
   verified: boolean('verified').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

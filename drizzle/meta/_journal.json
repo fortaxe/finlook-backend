@@ -43,6 +43,20 @@
       "when": 1759069258238,
       "tag": "0005_narrow_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1759480892029,
+      "tag": "0006_chilly_changeling",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1759483156944,
+      "tag": "0007_cuddly_serpent_society",
+      "breakpoints": true
     }
   ]
 }
